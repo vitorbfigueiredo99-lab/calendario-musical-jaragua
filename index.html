@@ -1,0 +1,1397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0B1F3A" />
+  <meta name="description" content="Calendário Musical do Setor Jaraguá — ensaios, horários e encarregados das Casas de Oração." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Calendário Musical" />
+  <title>Calendário Musical — Setor Jaraguá</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+  <style>
+    html, body, #root { height: 100%; }
+    body { background-color: #f8fafc; margin: 0; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react,env">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    /* ============================== ICONS (emoji, no external icon library needed) ============================== */
+    function makeIcon(char) {
+      return function IconGlyph({ size = 18, className = "" }) {
+        return <span className={className} style={{ fontSize: size, lineHeight: 1, display: "inline-block" }}>{char}</span>;
+      };
+    }
+    function Heart({ size = 18, className = "", fill }) {
+      const filled = fill && fill !== "none";
+      return <span className={className} style={{ fontSize: size, lineHeight: 1, display: "inline-block" }}>{filled ? "❤️" : "🤍"}</span>;
+    }
+    const HomeIcon = makeIcon("🏠");
+    const CalendarIcon = makeIcon("📅");
+    const Search = makeIcon("🔍");
+    const MapPin = makeIcon("📍");
+    const Navigation = makeIcon("🚗");
+    const Share2 = makeIcon("↗️");
+    const Bell = makeIcon("🔔");
+    const Megaphone = makeIcon("📢");
+    const Sparkles = makeIcon("✨");
+    const Settings = makeIcon("⚙️");
+    const Menu = makeIcon("☰");
+    const X = makeIcon("✕");
+    const ChevronLeft = makeIcon("‹");
+    const ChevronRight = makeIcon("›");
+    const Star = makeIcon("⭐");
+    const Plus = makeIcon("➕");
+    const Pencil = makeIcon("✏️");
+    const Trash2 = makeIcon("🗑️");
+    const Clock = makeIcon("🕐");
+    const User = makeIcon("👤");
+    const Check = makeIcon("✅");
+    const ShieldCheck = makeIcon("🛡️");
+    const Filter = makeIcon("🔽");
+    const Music = makeIcon("🎵");
+    const ArrowLeft = makeIcon("←");
+    const Lightbulb = makeIcon("💡");
+    const CalendarPlus = makeIcon("🗓️");
+    const Lock = makeIcon("🔒");
+    const LogOut = makeIcon("🚪");
+    const AlertCircle = makeIcon("⚠️");
+
+
+/* ============================== DATA ============================== */
+
+const WEEKDAYS = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+const WEEK_LABEL = { "1": "1º", "2": "2º", "3": "3º", "4": "4º", ultimo: "Último" };
+const WD_LABEL = { domingo: "Domingo", segunda: "Segunda", terca: "Terça", quarta: "Quarta", quinta: "Quinta", sexta: "Sexta", sabado: "Sábado" };
+const WD_SHORT = { domingo: "Dom", segunda: "Seg", terca: "Ter", quarta: "Qua", quinta: "Qui", sexta: "Sex", sabado: "Sáb" };
+const WD_STYLE = {
+  sexta: { dot: "bg-amber-500", text: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", chip: "bg-amber-100 text-amber-800" },
+  sabado: { dot: "bg-blue-700", text: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", chip: "bg-blue-100 text-blue-800" },
+  domingo: { dot: "bg-emerald-600", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", chip: "bg-emerald-100 text-emerald-800" },
+};
+
+const HOUSES = [
+  { id: "canta-galo", name: "Canta Galo" },
+  { id: "city-jaragua", name: "City Jaraguá" },
+  { id: "cohab-brasilandia", name: "Cohab Brasilândia" },
+  { id: "jd-alvina", name: "Jd Alvina" },
+  { id: "jd-aparecidinha", name: "Jd Aparecidinha" },
+  { id: "jd-bandeirantes", name: "Jd Bandeirantes" },
+  { id: "jd-brasilia", name: "Jd Brasília" },
+  { id: "jd-das-flores", name: "Jd das Flores" },
+  { id: "jd-ipanema", name: "Jd Ipanema" },
+  { id: "jd-novo-jaragua", name: "Jd Novo Jaraguá" },
+  { id: "jd-pirituba", name: "Jd Pirituba" },
+  { id: "jd-rincao", name: "Jd Rincão" },
+  { id: "jd-rodrigo", name: "Jd Rodrigo" },
+  { id: "jd-vitoria-regia", name: "Jd Vitoria Régia" },
+  { id: "jd-vivan", name: "Jd Vivan" },
+  { id: "parada-de-taipas", name: "Parada de Taipas" },
+  { id: "pq-nacoes-unidas", name: "Pq Nações Unidas" },
+  { id: "pq-nacoes-unidas-ii-voith", name: "Parque Nações Unidas II - Voith" },
+  { id: "pq-panamericano", name: "Pq Panamericano" },
+  { id: "pq-taipas", name: "Pq Taipas" },
+  { id: "vl-aurora", name: "Vl Aurora" },
+  { id: "vl-chica-luiza", name: "Vl Chica Luiza" },
+  { id: "vl-mirante", name: "Vl Mirante" },
+  { id: "vl-nova-parada", name: "Vl Nova Parada" },
+  { id: "vl-santa-lucrecia", name: "Vl Santa Lucrécia" },
+];
+
+const SCHEDULE = [
+  { id: "s1", houseId: "jd-pirituba", week: "1", weekday: "sabado", time: "16:30", person: "Antonio Soares" },
+  { id: "s2", houseId: "jd-rodrigo", week: "1", weekday: "sabado", time: "16:30", person: "Rafael Candido" },
+  { id: "s3", houseId: "jd-das-flores", week: "1", weekday: "sabado", time: "17:00", person: "Daniel" },
+  { id: "s4", houseId: "jd-ipanema", week: "1", weekday: "sabado", time: "17:00", person: "Silvano" },
+  { id: "s5", houseId: "jd-bandeirantes", week: "1", weekday: "domingo", time: "16:00", person: "Jorge Luiz" },
+  { id: "s6", houseId: "jd-vitoria-regia", week: "1", weekday: "domingo", time: "16:00", person: "Valdecir" },
+  { id: "s7", houseId: "pq-nacoes-unidas", week: "1", weekday: "domingo", time: "16:00", person: "Rubens" },
+  { id: "s8", houseId: "jd-alvina", week: "2", weekday: "sexta", time: "19:30", person: "Elias Paulino" },
+  { id: "s9", houseId: "city-jaragua", week: "2", weekday: "sabado", time: "17:00", person: "Fernando" },
+  { id: "s10", houseId: "vl-santa-lucrecia", week: "2", weekday: "sabado", time: "17:00", person: "David" },
+  { id: "s11", houseId: "jd-aparecidinha", week: "2", weekday: "sabado", time: "19:30", person: "Caio Vinícius" },
+  { id: "s12", houseId: "vl-nova-parada", week: "3", weekday: "sabado", time: "16:30", person: "Eduardo" },
+  { id: "s13", houseId: "jd-rincao", week: "3", weekday: "sabado", time: "17:00", person: "Íris" },
+  { id: "s14", houseId: "pq-panamericano", week: "3", weekday: "sabado", time: "17:00", person: "Nivaldo" },
+  { id: "s15", houseId: "pq-taipas", week: "3", weekday: "sabado", time: "17:00", person: "Joaquim / Jéferson" },
+  { id: "s16", houseId: "vl-chica-luiza", week: "3", weekday: "sabado", time: "17:00", person: "Marcos Franco" },
+  { id: "s17", houseId: "cohab-brasilandia", week: "4", weekday: "sabado", time: "19:30", person: "Nimrod" },
+  { id: "s18", houseId: "jd-brasilia", week: "4", weekday: "domingo", time: "16:00", person: "Domingos" },
+  { id: "s19", houseId: "jd-novo-jaragua", week: "4", weekday: "domingo", time: "16:00", person: "Leonel" },
+  { id: "s20", houseId: "jd-vivan", week: "4", weekday: "domingo", time: "16:00", person: "Vicente / Sergio" },
+  { id: "s21", houseId: "vl-mirante", week: "4", weekday: "domingo", time: "16:00", person: "Deivid" },
+  { id: "s22", houseId: "canta-galo", week: "ultimo", weekday: "sabado", time: "17:00", person: "Josué Alves" },
+  { id: "s23", houseId: "parada-de-taipas", week: "ultimo", weekday: "domingo", time: "16:00", person: "Ivanildo" },
+  { id: "s24", houseId: "pq-nacoes-unidas-ii-voith", week: "ultimo", weekday: "domingo", time: "16:00", person: "Hailton" },
+  { id: "s25", houseId: "vl-aurora", week: "ultimo", weekday: "domingo", time: "16:00", person: "João Ruiz" },
+];
+
+const SEED_NOVIDADES = [
+  { id: "n1", date: "2026-08-24", text: "Novo calendário do Setor Jaraguá publicado." },
+  { id: "n2", date: "2026-08-22", text: "Novo endereço cadastrado." },
+  { id: "n3", date: "2026-08-20", text: "Nova Casa adicionada." },
+];
+
+const ADMIN_PASSWORD = "jaragua2026";
+
+/* ============================== HELPERS ============================== */
+
+function dOnly(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+
+function nthWeekdayOfMonth(year, month, weekday, n) {
+  let d = new Date(year, month, 1);
+  let count = 0;
+  while (d.getMonth() === month) {
+    if (d.getDay() === weekday) {
+      count++;
+      if (count === n) return new Date(d);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return null;
+}
+
+function lastWeekdayOfMonth(year, month, weekday) {
+  let d = new Date(year, month + 1, 0);
+  while (d.getDay() !== weekday) d.setDate(d.getDate() - 1);
+  return new Date(d);
+}
+
+function occurrenceInMonth(entry, year, month) {
+  const wd = WEEKDAYS.indexOf(entry.weekday);
+  if (entry.week === "ultimo") return lastWeekdayOfMonth(year, month, wd);
+  return nthWeekdayOfMonth(year, month, wd, parseInt(entry.week, 10));
+}
+
+function nextOccurrence(entry, fromDate, strictlyAfter) {
+  let y = fromDate.getFullYear(), m = fromDate.getMonth();
+  const fromT = dOnly(fromDate);
+  for (let i = 0; i < 15; i++) {
+    const d = occurrenceInMonth(entry, y, m);
+    if (d) {
+      const t = dOnly(d);
+      if (strictlyAfter ? t > fromT : t >= fromT) return d;
+    }
+    m++; if (m > 11) { m = 0; y++; }
+  }
+  return null;
+}
+
+function fmtDateShort(d) {
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+}
+function fmtDateFull(d) {
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
+function todayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+
+function wazeSearchUrl(house, override) {
+  if (override && override.confirmado && override.lat && override.lng) {
+    return `https://waze.com/ul?ll=${override.lat}%2C${override.lng}&navigate=yes`;
+  }
+  if (override && override.confirmado && override.endereco) {
+    return `https://waze.com/ul?q=${encodeURIComponent(override.endereco + ", São Paulo")}&navigate=yes`;
+  }
+  return `https://waze.com/ul?q=${encodeURIComponent(house.name + " Setor Jaraguá São Paulo")}`;
+}
+
+function shareText(house, entry, date) {
+  return `🎵 CALENDÁRIO MUSICAL — SETOR JARAGUÁ\n\n📍 ${house.name}\n📅 ${WEEK_LABEL[entry.week]} ${WD_LABEL[entry.weekday].toLowerCase()}${date ? " (" + fmtDateShort(date) + ")" : ""}\n🕐 ${entry.time}\n👤 ${entry.person}\n\n🚗 Como chegar pelo Waze: ${wazeSearchUrl(house)}`;
+}
+
+async function doShare(text, title) {
+  if (navigator.share) {
+    try { await navigator.share({ title, text }); return; } catch (e) { /* cancelled */ }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("Texto copiado! Cole no WhatsApp para compartilhar.");
+  } catch (e) {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+}
+
+/* ============================== STORAGE HOOK ============================== */
+
+function useStored(key, initial /*, shared - ignored in single-file version, always local */) {
+  const [value, setValue] = useState(initial);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw) setValue(JSON.parse(raw));
+    } catch (e) { /* keep initial */ }
+    setReady(true);
+  }, [key]);
+
+  const save = (next) => {
+    setValue(next);
+    try { window.localStorage.setItem(key, JSON.stringify(next)); }
+    catch (e) { console.error("storage set failed", e); }
+  };
+  return [value, save, ready];
+}
+
+/* ============================== SMALL UI PARTS ============================== */
+
+function HousePhoto({ url, className }) {
+  if (url) return <img src={url} alt="" className={className + " object-cover"} />;
+  return (
+    <div className={className + " bg-gradient-to-br from-blue-950 via-blue-800 to-blue-700 flex flex-col items-center justify-center text-white"}>
+      <Music size={28} className="mb-1 opacity-90" />
+      <span className="text-[10px] font-serif tracking-wide opacity-90">Casa de Oração</span>
+      <span className="text-[9px] opacity-70">Setor Jaraguá</span>
+    </div>
+  );
+}
+
+function FavButton({ active, onToggle, size = 20, filled }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      className={`inline-flex items-center justify-center rounded-full p-2 transition ${active ? "bg-rose-50 text-rose-500" : "bg-slate-100 text-slate-400 hover:text-rose-400"}`}
+      aria-label="Favoritar"
+    >
+      <Heart size={size} fill={active ? "currentColor" : "none"} />
+    </button>
+  );
+}
+
+function IconBtn({ icon: Icon, label, onClick, tone = "slate" }) {
+  const tones = {
+    slate: "bg-slate-100 text-slate-600 hover:bg-slate-200",
+    blue: "bg-blue-700 text-white hover:bg-blue-800",
+    green: "bg-emerald-600 text-white hover:bg-emerald-700",
+  };
+  return (
+    <button onClick={onClick} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition ${tones[tone]}`}>
+      <Icon size={16} /> {label}
+    </button>
+  );
+}
+
+function Badge({ children, tone }) {
+  const styles = WD_STYLE[tone];
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${styles ? styles.chip : "bg-slate-100 text-slate-600"}`}>{children}</span>;
+}
+
+function SectionTitle({ icon: Icon, children, accent }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${accent || "bg-blue-950"} text-white`}><Icon size={16} /></div>
+      <h2 className="font-serif text-lg font-semibold text-slate-900">{children}</h2>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="text-center py-10 px-4 text-slate-400">
+      <Icon size={32} className="mx-auto mb-2 opacity-50" />
+      <p className="font-medium text-slate-500">{title}</p>
+      {subtitle && <p className="text-sm mt-1">{subtitle}</p>}
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto p-5 z-10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-serif text-lg font-semibold text-slate-900">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-slate-100 text-slate-500"><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block mb-3">
+      <span className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wide">{label}</span>
+      {children}
+    </label>
+  );
+}
+const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent";
+
+/* ============================== ENSAIO ROW / CARD ============================== */
+
+function EnsaioCard({ house, entry, date, favorites, toggleFav, casaOverride, onOpen }) {
+  const style = WD_STYLE[entry.weekday];
+  const isFav = favorites.includes(house.id);
+  return (
+    <div className={`rounded-2xl border ${style.border} ${style.bg} p-3.5 flex gap-3 items-center shadow-sm`}>
+      <button onClick={() => onOpen(house.id)} className="shrink-0">
+        <HousePhoto url={casaOverride?.photo} className="w-16 h-16 rounded-xl" />
+      </button>
+      <div className="flex-1 min-w-0" onClick={() => onOpen(house.id)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-slate-900 truncate">{house.name}</p>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs">
+          <Badge tone={entry.weekday}>{date ? fmtDateShort(date) : `${WEEK_LABEL[entry.week]} ${WD_LABEL[entry.weekday]}`}</Badge>
+          <span className="flex items-center gap-1 text-slate-600 font-medium"><Clock size={12} />{entry.time}</span>
+        </div>
+        <p className="text-sm text-slate-500 flex items-center gap-1 mt-1 truncate"><User size={12} />{entry.person}</p>
+      </div>
+      <div className="flex flex-col gap-1.5 items-end shrink-0">
+        <FavButton active={isFav} onToggle={() => toggleFav(house.id)} size={17} />
+        <div className="flex gap-1">
+          <a href={wazeSearchUrl(house, casaOverride)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            className="p-2 rounded-full bg-blue-700 text-white"><Navigation size={14} /></a>
+          <button onClick={(e) => { e.stopPropagation(); doShare(shareText(house, entry, date), "Calendário Musical"); }}
+            className="p-2 rounded-full bg-slate-700 text-white"><Share2 size={14} /></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== HEADER / NAV ============================== */
+
+function Header({ onMenu }) {
+  return (
+    <header className="sticky top-0 z-30 bg-gradient-to-r from-blue-950 to-blue-800 text-white px-4 pt-5 pb-4 shadow-md">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="font-serif text-xl font-bold leading-tight flex items-center gap-1.5">🎵 Calendário Musical</p>
+          <p className="text-blue-200 text-sm font-medium tracking-wide">Setor Jaraguá</p>
+        </div>
+        <button onClick={onMenu} className="p-2 rounded-full bg-white/10 hover:bg-white/20"><Menu size={20} /></button>
+      </div>
+    </header>
+  );
+}
+
+function BottomNav({ view, setView, favCount }) {
+  const items = [
+    { id: "home", label: "Início", icon: HomeIcon },
+    { id: "calendario", label: "Calendário", icon: CalendarIcon },
+    { id: "casas", label: "Casas", icon: MapPin },
+    { id: "favoritos", label: "Favoritos", icon: Heart },
+    { id: "mais", label: "Mais", icon: Menu },
+  ];
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 flex justify-around py-1.5 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+      {items.map((it) => {
+        const active = view === it.id || (it.id === "mais" && ["mapa","agenda","novidades","avisos","sugerir-alt","sugerir-ensaio","config","admin"].includes(view));
+        return (
+          <button key={it.id} onClick={() => setView(it.id)} className="flex flex-col items-center gap-0.5 px-3 py-1.5 relative">
+            <it.icon size={21} className={active ? "text-blue-700" : "text-slate-400"} fill={it.id === "favoritos" && active ? "currentColor" : "none"} />
+            {it.id === "favoritos" && favCount > 0 && (
+              <span className="absolute -top-0.5 right-1.5 bg-rose-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{favCount}</span>
+            )}
+            <span className={`text-[10px] font-medium ${active ? "text-blue-700" : "text-slate-400"}`}>{it.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function MoreSheet({ onClose, setView }) {
+  const items = [
+    { id: "mapa", label: "Mapa das Casas", icon: MapPin },
+    { id: "agenda", label: "Minha Agenda", icon: CalendarPlus },
+    { id: "novidades", label: "Novidades", icon: Sparkles },
+    { id: "avisos", label: "Avisos", icon: Megaphone },
+    { id: "sugerir-alt", label: "Sugerir alteração", icon: Lightbulb },
+    { id: "sugerir-ensaio", label: "Sugerir ensaio", icon: Plus },
+    { id: "config", label: "Configurações", icon: Settings },
+    { id: "admin", label: "Painel administrativo", icon: ShieldCheck },
+  ];
+  return (
+    <Modal title="Mais opções" onClose={onClose}>
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((it) => (
+          <button key={it.id} onClick={() => { setView(it.id); onClose(); }}
+            className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-100 text-center">
+            <it.icon size={22} className="text-blue-700" />
+            <span className="text-xs font-medium text-slate-700">{it.label}</span>
+          </button>
+        ))}
+      </div>
+    </Modal>
+  );
+}
+
+/* ============================== HOME PAGE ============================== */
+
+function HomePage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, avisos, openHouse, setView }) {
+  const today = useMemo(() => new Date(), []);
+  const scheduleMerged = useMemo(() => SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) })), [ensaiosOverrides]);
+
+  const todays = useMemo(() => {
+    return scheduleMerged.filter(e => {
+      const d = occurrenceInMonth(e, today.getFullYear(), today.getMonth());
+      return d && dOnly(d) === dOnly(today);
+    });
+  }, [scheduleMerged, today]);
+
+  const upcoming = useMemo(() => {
+    const list = scheduleMerged.map(e => ({ entry: e, date: nextOccurrence(e, today, true) })).filter(x => x.date);
+    list.sort((a, b) => a.date - b.date);
+    return list.slice(0, 8);
+  }, [scheduleMerged, today]);
+
+  const activeAvisos = useMemo(() => {
+    const t = dOnly(today);
+    return avisos.filter(a => {
+      const s = a.startDate ? dOnly(new Date(a.startDate + "T00:00:00")) : -Infinity;
+      const e = a.endDate ? dOnly(new Date(a.endDate + "T00:00:00")) : Infinity;
+      return t >= s && t <= e;
+    });
+  }, [avisos, today]);
+
+  const AVISO_ICON = { cancelamento: "🔴", alteracao: "🟡", informacao: "🔵", novidade: "🟢" };
+
+  const weekdayName = WD_LABEL[WEEKDAYS[today.getDay()]];
+
+  return (
+    <div className="px-4 pt-4 pb-6 space-y-6">
+      {activeAvisos.length > 0 && (
+        <div className="space-y-2">
+          {activeAvisos.map(a => (
+            <div key={a.id} className="rounded-xl bg-white border border-slate-200 p-3 flex gap-2 items-start shadow-sm">
+              <span className="text-lg leading-none">{AVISO_ICON[a.type] || "🔵"}</span>
+              <div className="min-w-0">
+                <p className="font-semibold text-sm text-slate-900">{a.title}</p>
+                <p className="text-xs text-slate-500">{a.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <SectionTitle icon={Sparkles} accent="bg-amber-500">🔥 Ensaios de Hoje</SectionTitle>
+        <p className="text-sm text-slate-500 -mt-2 mb-3">Hoje — {weekdayName}, {fmtDateShort(today)} · {todays.length} ensaio{todays.length !== 1 ? "s" : ""} encontrado{todays.length !== 1 ? "s" : ""}</p>
+        {todays.length === 0 ? (
+          <EmptyState icon={Music} title="Nenhum ensaio hoje" subtitle="Veja os próximos ensaios abaixo." />
+        ) : (
+          <div className="space-y-2.5">
+            {todays.map(e => {
+              const house = HOUSES.find(h => h.id === e.houseId);
+              return <EnsaioCard key={e.id} house={house} entry={e} date={today} favorites={favorites} toggleFav={toggleFav} casaOverride={casasOverrides[house.id]} onOpen={openHouse} />;
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <SectionTitle icon={CalendarIcon}>📅 Próximos Ensaios</SectionTitle>
+        <div className="space-y-2.5">
+          {upcoming.map(({ entry, date }) => {
+            const house = HOUSES.find(h => h.id === entry.houseId);
+            return <EnsaioCard key={entry.id} house={house} entry={entry} date={date} favorites={favorites} toggleFav={toggleFav} casaOverride={casasOverrides[house.id]} onOpen={openHouse} />;
+          })}
+        </div>
+        <button onClick={() => setView("calendario")} className="mt-3 text-sm text-blue-700 font-semibold w-full text-center">Ver calendário completo →</button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== CALENDARIO PAGE ============================== */
+
+function CalendarioPage({ ensaiosOverrides, favorites, toggleFav, casasOverrides, openHouse }) {
+  const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [selDay, setSelDay] = useState(new Date());
+  const scheduleMerged = useMemo(() => SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) })), [ensaiosOverrides]);
+
+  const year = cursor.getFullYear(), month = cursor.getMonth();
+  const monthEvents = useMemo(() => {
+    const map = {};
+    scheduleMerged.forEach(e => {
+      const d = occurrenceInMonth(e, year, month);
+      if (d) {
+        const k = d.getDate();
+        if (!map[k]) map[k] = [];
+        map[k].push(e);
+      }
+    });
+    return map;
+  }, [scheduleMerged, year, month]);
+
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const selEvents = selDay.getMonth() === month && selDay.getFullYear() === year ? (monthEvents[selDay.getDate()] || []) : [];
+  const today = new Date();
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={CalendarIcon}>Calendário</SectionTitle>
+      <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={() => setCursor(new Date(year, month - 1, 1))} className="p-2 rounded-full bg-slate-100"><ChevronLeft size={18} /></button>
+          <p className="font-serif font-semibold text-slate-900 capitalize">{cursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
+          <button onClick={() => setCursor(new Date(year, month + 1, 1))} className="p-2 rounded-full bg-slate-100"><ChevronRight size={18} /></button>
+        </div>
+        <button onClick={() => { setCursor(new Date(today.getFullYear(), today.getMonth(), 1)); setSelDay(today); }} className="text-xs text-blue-700 font-semibold mb-2">Hoje</button>
+        <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-slate-400 mb-1">
+          {["D","S","T","Q","Q","S","S"].map((d,i) => <div key={i}>{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((d, i) => {
+            if (!d) return <div key={i} />;
+            const evs = monthEvents[d] || [];
+            const isToday = dOnly(new Date(year, month, d)) === dOnly(today);
+            const isSel = selDay.getDate() === d && selDay.getMonth() === month && selDay.getFullYear() === year;
+            return (
+              <button key={i} onClick={() => setSelDay(new Date(year, month, d))}
+                className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm relative
+                  ${isSel ? "bg-blue-700 text-white font-bold" : isToday ? "bg-amber-100 text-blue-900 font-bold" : "text-slate-700 hover:bg-slate-50"}`}>
+                {d}
+                {evs.length > 0 && (
+                  <div className="flex gap-0.5 mt-0.5">
+                    {evs.slice(0, 3).map((e, j) => <span key={j} className={`w-1.5 h-1.5 rounded-full ${isSel ? "bg-white" : WD_STYLE[e.weekday].dot}`} />)}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <p className="font-semibold text-slate-800 mb-2">{fmtDateFull(selDay)}</p>
+        {selEvents.length === 0 ? (
+          <EmptyState icon={CalendarIcon} title="Sem ensaios neste dia" />
+        ) : (
+          <div className="space-y-2.5">
+            {selEvents.map(e => {
+              const house = HOUSES.find(h => h.id === e.houseId);
+              return <EnsaioCard key={e.id} house={house} entry={e} date={selDay} favorites={favorites} toggleFav={toggleFav} casaOverride={casasOverrides[house.id]} onOpen={openHouse} />;
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== CASAS PAGE ============================== */
+
+function CasasPage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, openHouse }) {
+  const [q, setQ] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [fWeekday, setFWeekday] = useState("");
+  const [fWeek, setFWeek] = useState("");
+  const [fTime, setFTime] = useState("");
+  const [onlyFav, setOnlyFav] = useState(false);
+
+  const scheduleMerged = useMemo(() => SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) })), [ensaiosOverrides]);
+
+  const rows = useMemo(() => {
+    return HOUSES.map(h => ({ house: h, entry: scheduleMerged.find(e => e.houseId === h.id) })).filter(r => {
+      const ov = casasOverrides[r.house.id];
+      if (ov && ov.ativo === false) return false;
+      if (onlyFav && !favorites.includes(r.house.id)) return false;
+      if (fWeekday && (!r.entry || r.entry.weekday !== fWeekday)) return false;
+      if (fWeek && (!r.entry || r.entry.week !== fWeek)) return false;
+      if (fTime && (!r.entry || r.entry.time !== fTime)) return false;
+      if (q.trim()) {
+        const s = q.toLowerCase();
+        const hay = [r.house.name, r.entry?.person, r.entry ? WD_LABEL[r.entry.weekday] : "", r.entry ? WEEK_LABEL[r.entry.week] : "", r.entry?.time].join(" ").toLowerCase();
+        if (!hay.includes(s)) return false;
+      }
+      return true;
+    });
+  }, [q, fWeekday, fWeek, fTime, onlyFav, favorites, casasOverrides, scheduleMerged]);
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={MapPin}>Casas de Oração</SectionTitle>
+      <div className="flex gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar Casa, bairro, encarregado, horário..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-700" />
+        </div>
+        <button onClick={() => setShowFilters(s => !s)} className={`p-2.5 rounded-xl border ${showFilters ? "bg-blue-700 text-white border-blue-700" : "bg-white text-slate-600 border-slate-200"}`}><Filter size={18} /></button>
+      </div>
+
+      {showFilters && (
+        <div className="bg-slate-50 rounded-xl p-3 mb-3 space-y-3 border border-slate-200">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 mb-1.5 uppercase">Dia</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {["sexta","sabado","domingo"].map(w => (
+                <button key={w} onClick={() => setFWeekday(fWeekday === w ? "" : w)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${fWeekday === w ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-200"}`}>{WD_LABEL[w]}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 mb-1.5 uppercase">Semana</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {["1","2","3","4","ultimo"].map(w => (
+                <button key={w} onClick={() => setFWeek(fWeek === w ? "" : w)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${fWeek === w ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-200"}`}>{WEEK_LABEL[w]}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-500 mb-1.5 uppercase">Horário</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {["16:00","16:30","17:00","19:30"].map(w => (
+                <button key={w} onClick={() => setFTime(fTime === w ? "" : w)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${fTime === w ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-200"}`}>{w}</button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input type="checkbox" checked={onlyFav} onChange={e => setOnlyFav(e.target.checked)} className="w-4 h-4 accent-blue-700" /> Somente favoritos
+          </label>
+        </div>
+      )}
+
+      <p className="text-xs text-slate-400 mb-2">{rows.length} de {HOUSES.length} Casas</p>
+      <div className="space-y-2.5">
+        {rows.length === 0 && <EmptyState icon={Search} title="Nenhuma Casa encontrada" subtitle="Tente outro termo ou remova os filtros." />}
+        {rows.map(({ house, entry }) => entry && (
+          <EnsaioCard key={house.id} house={house} entry={entry} date={null} favorites={favorites} toggleFav={toggleFav} casaOverride={casasOverrides[house.id]} onOpen={openHouse} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== CASA DETAIL ============================== */
+
+function CasaDetailPage({ houseId, favorites, toggleFav, casasOverrides, ensaiosOverrides, back }) {
+  const house = HOUSES.find(h => h.id === houseId);
+  const ov = casasOverrides[houseId] || {};
+  const entry = useMemo(() => {
+    const base = SCHEDULE.find(e => e.houseId === houseId);
+    return base ? { ...base, ...(ensaiosOverrides[base.id] || {}) } : null;
+  }, [houseId, ensaiosOverrides]);
+  const isFav = favorites.includes(houseId);
+
+  const nextDates = useMemo(() => {
+    if (!entry) return [];
+    const list = [];
+    let from = new Date();
+    for (let i = 0; i < 4; i++) {
+      const d = nextOccurrence(entry, from, i > 0);
+      if (!d) break;
+      list.push(d);
+      from = new Date(d.getTime() + 86400000);
+    }
+    return list;
+  }, [entry]);
+
+  if (!house) return null;
+
+  return (
+    <div className="pb-6">
+      <div className="relative">
+        <HousePhoto url={ov.photo} className="w-full h-56" />
+        <button onClick={back} className="absolute top-4 left-4 p-2 rounded-full bg-black/40 text-white backdrop-blur"><ArrowLeft size={20} /></button>
+        <div className="absolute top-4 right-4"><FavButton active={isFav} onToggle={() => toggleFav(houseId)} size={20} /></div>
+      </div>
+      <div className="px-4 pt-4 space-y-5">
+        <h1 className="font-serif text-2xl font-bold text-slate-900">{house.name}</h1>
+
+        {entry && (
+          <div className={`rounded-2xl p-4 border ${WD_STYLE[entry.weekday].border} ${WD_STYLE[entry.weekday].bg}`}>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Próximo ensaio</p>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <CalendarIcon size={18} className="mx-auto text-slate-500 mb-1" />
+                <p className="text-sm font-bold text-slate-800">{WEEK_LABEL[entry.week]} {WD_SHORT[entry.weekday]}</p>
+              </div>
+              <div>
+                <Clock size={18} className="mx-auto text-slate-500 mb-1" />
+                <p className="text-sm font-bold text-slate-800">{entry.time}</p>
+              </div>
+              <div>
+                <User size={18} className="mx-auto text-slate-500 mb-1" />
+                <p className="text-sm font-bold text-slate-800 truncate">{entry.person}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <IconBtn icon={Share2} label="Compartilhar" tone="slate" onClick={() => doShare(shareText(house, entry, nextDates[0]), "Calendário Musical")} />
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5"><MapPin size={13} /> Localização</p>
+          {ov.confirmado ? (
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-sm text-slate-700">{ov.endereco}</p>
+              {ov.bairro && <p className="text-xs text-slate-400 mt-0.5">{ov.bairro}{ov.cidade ? " · " + ov.cidade : ""}</p>}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 p-3 flex items-center gap-2 text-slate-500 text-sm">
+              <AlertCircle size={16} className="shrink-0" /> Endereço em confirmação — informação em atualização.
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <a href={wazeSearchUrl(house, ov)} target="_blank" rel="noreferrer"
+              className="flex items-center justify-center gap-2 bg-blue-700 text-white font-semibold py-3 rounded-xl text-sm"><Navigation size={17} /> {ov.confirmado ? "Abrir no Waze" : "Pesquisar no Waze"}</a>
+            <button className="flex items-center justify-center gap-2 bg-slate-100 text-slate-600 font-semibold py-3 rounded-xl text-sm"><MapPin size={17} /> Ver no mapa</button>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 flex items-center gap-1.5"><CalendarIcon size={13} /> Calendário</p>
+          <div className="space-y-2">
+            {nextDates.map((d, i) => (
+              <div key={i} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                <span className="text-sm font-medium text-slate-700">{fmtDateFull(d)}</span>
+                <span className="text-sm font-bold text-blue-700">{entry.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== FAVORITOS PAGE ============================== */
+
+function FavoritosPage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, openHouse, setView }) {
+  const scheduleMerged = useMemo(() => SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) })), [ensaiosOverrides]);
+  const favEntries = useMemo(() => {
+    const list = favorites.map(hid => {
+      const entry = scheduleMerged.find(e => e.houseId === hid);
+      if (!entry) return null;
+      return { house: HOUSES.find(h => h.id === hid), entry, date: nextOccurrence(entry, new Date(), false) };
+    }).filter(Boolean);
+    list.sort((a, b) => a.date - b.date);
+    return list;
+  }, [favorites, scheduleMerged]);
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Heart} accent="bg-rose-500">❤️ Meus Favoritos</SectionTitle>
+      {favEntries.length === 0 ? (
+        <EmptyState icon={Heart} title="Você ainda não tem favoritos" subtitle="Toque no coração de uma Casa para adicioná-la aqui." />
+      ) : (
+        <>
+          <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 mb-4">
+            <p className="text-xs font-bold uppercase text-rose-500 mb-1.5">Próximo ensaio dos seus favoritos</p>
+            {favEntries.slice(0, 3).map(f => (
+              <p key={f.house.id} className="text-sm text-slate-700"><span className="font-semibold">{f.house.name}</span> — {WD_LABEL[f.entry.weekday]} • {f.entry.time}</p>
+            ))}
+          </div>
+          <div className="space-y-2.5">
+            {favEntries.map(f => (
+              <EnsaioCard key={f.house.id} house={f.house} entry={f.entry} date={f.date} favorites={favorites} toggleFav={toggleFav} casaOverride={casasOverrides[f.house.id]} onOpen={openHouse} />
+            ))}
+          </div>
+          <button onClick={() => setView("agenda")} className="mt-4 w-full text-center text-sm font-semibold text-blue-700">Ver Minha Agenda completa →</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ============================== MINHA AGENDA ============================== */
+
+function AgendaPage({ favorites, ensaiosOverrides, casasOverrides, favToggle, openHouse }) {
+  const scheduleMerged = useMemo(() => SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) })), [ensaiosOverrides]);
+  const grouped = useMemo(() => {
+    const g = { sexta: [], sabado: [], domingo: [] };
+    favorites.forEach(hid => {
+      const entry = scheduleMerged.find(e => e.houseId === hid);
+      if (entry) g[entry.weekday].push({ house: HOUSES.find(h => h.id === hid), entry });
+    });
+    Object.keys(g).forEach(k => g[k].sort((a, b) => a.entry.time.localeCompare(b.entry.time)));
+    return g;
+  }, [favorites, scheduleMerged]);
+
+  const order = ["sexta", "sabado", "domingo"];
+  const any = favorites.length > 0;
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={CalendarPlus} accent="bg-emerald-600">❤️ Minha Agenda</SectionTitle>
+      {!any ? (
+        <EmptyState icon={CalendarPlus} title="Adicione favoritos para montar sua agenda" />
+      ) : (
+        <div className="space-y-5">
+          {order.filter(k => grouped[k].length).map(k => (
+            <div key={k}>
+              <p className={`font-serif font-bold text-sm uppercase tracking-wide mb-2 ${WD_STYLE[k].text}`}>{WD_LABEL[k]}</p>
+              <div className="space-y-2">
+                {grouped[k].map(({ house, entry }) => (
+                  <button key={house.id} onClick={() => openHouse(house.id)} className={`w-full flex items-center justify-between rounded-xl border ${WD_STYLE[k].border} ${WD_STYLE[k].bg} px-3.5 py-2.5`}>
+                    <span className="text-sm font-semibold text-slate-800">{entry.time} — {house.name}</span>
+                    <ChevronRight size={16} className="text-slate-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================== MAPA PAGE ============================== */
+
+function MapaPage({ casasOverrides, favorites, toggleFav, openHouse }) {
+  const confirmed = HOUSES.filter(h => casasOverrides[h.id]?.confirmado && casasOverrides[h.id]?.lat);
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={MapPin}>🗺️ Mapa das Casas</SectionTitle>
+      <div className="rounded-2xl border border-dashed border-slate-300 p-5 text-center text-slate-500 mb-4">
+        <MapPin size={28} className="mx-auto mb-2 opacity-40" />
+        <p className="text-sm">O mapa interativo exibirá os pinos assim que os endereços forem confirmados pelo administrador.</p>
+        <p className="text-xs mt-1 text-slate-400">{confirmed.length} de {HOUSES.length} endereços confirmados</p>
+      </div>
+      <div className="space-y-2.5">
+        {HOUSES.map(h => {
+          const ov = casasOverrides[h.id];
+          return (
+            <div key={h.id} className="rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+              <HousePhoto url={ov?.photo} className="w-12 h-12 rounded-lg shrink-0" />
+              <button className="flex-1 min-w-0 text-left" onClick={() => openHouse(h.id)}>
+                <p className="font-semibold text-sm text-slate-800 truncate">{h.name}</p>
+                <p className="text-xs text-slate-400">{ov?.confirmado ? ov.endereco : "Localização em confirmação"}</p>
+              </button>
+              <FavButton active={favorites.includes(h.id)} onToggle={() => toggleFav(h.id)} size={16} />
+              <a href={wazeSearchUrl(h, ov)} target="_blank" rel="noreferrer" className="p-2 rounded-full bg-blue-700 text-white"><Navigation size={14} /></a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== NOVIDADES / AVISOS ============================== */
+
+function NovidadesPage({ novidades }) {
+  const sorted = [...novidades].sort((a, b) => b.date.localeCompare(a.date));
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Sparkles} accent="bg-amber-500">✨ Novidades</SectionTitle>
+      <div className="space-y-3">
+        {sorted.map(n => (
+          <div key={n.id} className="flex gap-3 items-start">
+            <div className="w-2 h-2 rounded-full bg-amber-500 mt-2 shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-slate-400">{new Date(n.date + "T00:00:00").toLocaleDateString("pt-BR")}</p>
+              <p className="text-sm text-slate-700">{n.text}</p>
+            </div>
+          </div>
+        ))}
+        {sorted.length === 0 && <EmptyState icon={Sparkles} title="Nenhuma novidade ainda" />}
+      </div>
+    </div>
+  );
+}
+
+function AvisosPage({ avisos }) {
+  const AVISO_ICON = { cancelamento: "🔴", alteracao: "🟡", informacao: "🔵", novidade: "🟢" };
+  const AVISO_LABEL = { cancelamento: "Cancelamento", alteracao: "Alteração de horário", informacao: "Informação", novidade: "Novo ensaio" };
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Megaphone}>📢 Avisos Importantes</SectionTitle>
+      <div className="space-y-2.5">
+        {avisos.length === 0 && <EmptyState icon={Megaphone} title="Nenhum aviso no momento" />}
+        {avisos.map(a => (
+          <div key={a.id} className="rounded-xl border border-slate-200 p-3.5">
+            <div className="flex items-center gap-2 mb-1">
+              <span>{AVISO_ICON[a.type]}</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-400">{AVISO_LABEL[a.type]}</span>
+            </div>
+            <p className="font-semibold text-slate-800 text-sm">{a.title}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{a.message}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============================== SUGESTOES ============================== */
+
+function SugerirAlteracaoPage({ addSuggestion, setView }) {
+  const [casaId, setCasaId] = useState(HOUSES[0].id);
+  const [tipo, setTipo] = useState("horario");
+  const [info, setInfo] = useState("");
+  const [obs, setObs] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const submit = () => {
+    if (!info.trim()) return;
+    addSuggestion({ id: "sg_" + Date.now(), type: "alteracao", casaId, tipo, info, obs, status: "pendente", createdAt: new Date().toISOString() });
+    setSent(true);
+  };
+
+  if (sent) return (
+    <div className="px-4 pt-10 text-center">
+      <Check size={40} className="mx-auto text-emerald-600 mb-3" />
+      <p className="font-serif text-lg font-semibold text-slate-800">Obrigado pela sugestão!</p>
+      <p className="text-sm text-slate-500 mt-1">Ela será analisada antes de ser aplicada ao calendário.</p>
+      <button onClick={() => setView("home")} className="mt-5 px-5 py-2.5 bg-blue-700 text-white rounded-xl text-sm font-semibold">Voltar ao início</button>
+    </div>
+  );
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Lightbulb}>💡 Sugerir alteração</SectionTitle>
+      <Field label="Casa de Oração">
+        <select value={casaId} onChange={e => setCasaId(e.target.value)} className={inputCls}>
+          {HOUSES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        </select>
+      </Field>
+      <Field label="Tipo de alteração">
+        <select value={tipo} onChange={e => setTipo(e.target.value)} className={inputCls}>
+          <option value="horario">Horário</option>
+          <option value="encarregado">Encarregado</option>
+          <option value="endereco">Endereço</option>
+          <option value="outro">Outro</option>
+        </select>
+      </Field>
+      <Field label="Informação correta">
+        <textarea value={info} onChange={e => setInfo(e.target.value)} rows={3} placeholder="Ex: Horário do Jd Ipanema mudou para 18h." className={inputCls} />
+      </Field>
+      <Field label="Observação (opcional)">
+        <textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} className={inputCls} />
+      </Field>
+      <button onClick={submit} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Enviar sugestão</button>
+    </div>
+  );
+}
+
+function SugerirEnsaioPage({ addSuggestion, setView }) {
+  const [casaId, setCasaId] = useState(HOUSES[0].id);
+  const [data, setData] = useState("");
+  const [horario, setHorario] = useState("");
+  const [encarregado, setEncarregado] = useState("");
+  const [obs, setObs] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const submit = () => {
+    if (!data || !horario || !encarregado.trim()) return;
+    addSuggestion({ id: "sg_" + Date.now(), type: "ensaio", casaId, data, horario, encarregado, obs, status: "pendente", createdAt: new Date().toISOString() });
+    setSent(true);
+  };
+
+  if (sent) return (
+    <div className="px-4 pt-10 text-center">
+      <Check size={40} className="mx-auto text-emerald-600 mb-3" />
+      <p className="font-serif text-lg font-semibold text-slate-800">Obrigado pela sugestão.</p>
+      <p className="text-sm text-slate-500 mt-1">Ela será analisada antes de aparecer no calendário.</p>
+      <button onClick={() => setView("home")} className="mt-5 px-5 py-2.5 bg-blue-700 text-white rounded-xl text-sm font-semibold">Voltar ao início</button>
+    </div>
+  );
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Plus}>🎵 Sugerir ensaio</SectionTitle>
+      <Field label="Casa de Oração">
+        <select value={casaId} onChange={e => setCasaId(e.target.value)} className={inputCls}>
+          {HOUSES.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+        </select>
+      </Field>
+      <Field label="Data"><input type="date" value={data} onChange={e => setData(e.target.value)} className={inputCls} /></Field>
+      <Field label="Horário"><input type="time" value={horario} onChange={e => setHorario(e.target.value)} className={inputCls} /></Field>
+      <Field label="Encarregado"><input value={encarregado} onChange={e => setEncarregado(e.target.value)} className={inputCls} /></Field>
+      <Field label="Observação (opcional)"><textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} className={inputCls} /></Field>
+      <button onClick={submit} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Enviar sugestão</button>
+    </div>
+  );
+}
+
+/* ============================== CONFIGURACOES ============================== */
+
+function ConfiguracoesPage({ setView }) {
+  const [notif, setNotif] = useState(false);
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Settings}>Configurações</SectionTitle>
+      <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 mb-5">
+        <div className="p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Lembretes de ensaio</p>
+            <p className="text-xs text-slate-400">Estrutura pronta para notificações do PWA</p>
+          </div>
+          <button onClick={() => setNotif(v => !v)} className={`w-11 h-6 rounded-full transition ${notif ? "bg-emerald-600" : "bg-slate-200"} relative`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition ${notif ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
+        </div>
+        <button onClick={() => setView("admin")} className="p-4 flex items-center justify-between w-full text-left">
+          <span className="text-sm font-semibold text-slate-800 flex items-center gap-2"><ShieldCheck size={16} /> Painel administrativo</span>
+          <ChevronRight size={16} className="text-slate-400" />
+        </button>
+      </div>
+      <div className="text-center text-xs text-slate-400 px-4">
+        <p className="font-serif text-sm text-slate-500 mb-1">🎵 Calendário Musical — Setor Jaraguá</p>
+        <p>Última atualização: 24/08/2026</p>
+        <p className="italic mt-2">"Louvai ao Senhor com instrumento de cordas; louvai-o com som da harpa e da cítara."</p>
+        <p>Salmo 150:4</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== ADMIN ============================== */
+
+function AdminPage({ casasOverrides, saveCasasOverrides, ensaiosOverrides, saveEnsaiosOverrides, suggestions, saveSuggestions, avisos, saveAvisos, novidades, saveNovidades, historico, saveHistorico, favorites }) {
+  const [authed, setAuthed] = useState(false);
+  const [pwd, setPwd] = useState("");
+  const [err, setErr] = useState("");
+  const [tab, setTab] = useState("dashboard");
+  const [editHouse, setEditHouse] = useState(null);
+  const [editEntry, setEditEntry] = useState(null);
+  const [avisoForm, setAvisoForm] = useState(null);
+
+  const login = () => {
+    if (pwd === ADMIN_PASSWORD) { setAuthed(true); setErr(""); }
+    else setErr("Senha incorreta.");
+  };
+
+  const logHist = (houseName, field, oldV, newV) => {
+    const entry = { id: "h_" + Date.now() + Math.random().toString(36).slice(2, 6), date: new Date().toISOString(), houseName, field, oldValue: String(oldV ?? "—"), newValue: String(newV ?? "—") };
+    saveHistorico([entry, ...historico]);
+  };
+
+  if (!authed) {
+    return (
+      <div className="px-4 pt-10">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-blue-950 text-white flex items-center justify-center mx-auto mb-3"><Lock size={24} /></div>
+          <p className="font-serif text-xl font-semibold text-slate-900">Painel administrativo</p>
+          <p className="text-sm text-slate-500 mt-1">Acesso restrito ao encarregado do Setor</p>
+        </div>
+        <Field label="Senha de administrador">
+          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} className={inputCls} placeholder="••••••••" />
+        </Field>
+        {err && <p className="text-sm text-rose-500 mb-2">{err}</p>}
+        <button onClick={login} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Entrar</button>
+        <p className="text-xs text-slate-400 text-center mt-4">Protótipo: autenticação local simples, não segura para produção.</p>
+      </div>
+    );
+  }
+
+  const scheduleMerged = SCHEDULE.map(e => ({ ...e, ...(ensaiosOverrides[e.id] || {}) }));
+  const pendingSug = suggestions.filter(s => s.status === "pendente");
+  const tabs = [
+    { id: "dashboard", label: "Resumo" },
+    { id: "casas", label: "Casas" },
+    { id: "ensaios", label: "Ensaios" },
+    { id: "sugestoes", label: "Sugestões" },
+    { id: "avisos", label: "Avisos" },
+    { id: "historico", label: "Histórico" },
+  ];
+
+  return (
+    <div className="pb-6">
+      <div className="px-4 pt-4 flex items-center justify-between mb-3">
+        <SectionTitle icon={ShieldCheck}>Painel administrativo</SectionTitle>
+        <button onClick={() => setAuthed(false)} className="p-2 rounded-full bg-slate-100 text-slate-500"><LogOut size={16} /></button>
+      </div>
+      <div className="flex gap-1.5 px-4 pb-3 overflow-x-auto no-scrollbar">
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${tab === t.id ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{t.label}</button>
+        ))}
+      </div>
+
+      <div className="px-4">
+        {tab === "dashboard" && (
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ["Casas cadastradas", HOUSES.length],
+              ["Ensaios cadastrados", SCHEDULE.length],
+              ["Favoritos (este dispositivo)", favorites.length],
+              ["Sugestões pendentes", pendingSug.length],
+              ["Avisos ativos", avisos.length],
+              ["Registros no histórico", historico.length],
+            ].map(([label, val]) => (
+              <div key={label} className="rounded-xl border border-slate-200 p-3.5">
+                <p className="text-2xl font-bold text-blue-950">{val}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "casas" && (
+          <div className="space-y-2">
+            {HOUSES.map(h => {
+              const ov = casasOverrides[h.id] || {};
+              return (
+                <div key={h.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{h.name}</p>
+                    <p className="text-xs text-slate-400">{ov.confirmado ? "Endereço confirmado" : "Endereço em confirmação"} {ov.ativo === false ? "· Inativa" : ""}</p>
+                  </div>
+                  <button onClick={() => setEditHouse(h.id)} className="p-2 rounded-full bg-slate-100 text-slate-600 shrink-0"><Pencil size={15} /></button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "ensaios" && (
+          <div className="space-y-2">
+            {scheduleMerged.map(e => {
+              const h = HOUSES.find(hh => hh.id === e.houseId);
+              return (
+                <div key={e.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{h.name}</p>
+                    <p className="text-xs text-slate-400">{WEEK_LABEL[e.week]} {WD_LABEL[e.weekday]} · {e.time} · {e.person}</p>
+                  </div>
+                  <button onClick={() => setEditEntry(e.id)} className="p-2 rounded-full bg-slate-100 text-slate-600 shrink-0"><Pencil size={15} /></button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "sugestoes" && (
+          <div className="space-y-2.5">
+            {suggestions.length === 0 && <EmptyState icon={Lightbulb} title="Nenhuma sugestão recebida" />}
+            {suggestions.slice().reverse().map(s => {
+              const h = HOUSES.find(hh => hh.id === s.casaId);
+              return (
+                <div key={s.id} className="rounded-xl border border-slate-200 p-3.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-bold text-slate-800">{h?.name}</p>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${s.status === "pendente" ? "bg-amber-100 text-amber-700" : s.status === "aprovada" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{s.status}</span>
+                  </div>
+                  {s.type === "alteracao" ? (
+                    <p className="text-sm text-slate-600">Alteração ({s.tipo}): {s.info}</p>
+                  ) : (
+                    <p className="text-sm text-slate-600">Novo ensaio: {s.data} às {s.horario} — {s.encarregado}</p>
+                  )}
+                  {s.obs && <p className="text-xs text-slate-400 mt-1">Obs: {s.obs}</p>}
+                  {s.status === "pendente" && (
+                    <div className="flex gap-2 mt-2.5">
+                      <button onClick={() => {
+                        saveSuggestions(suggestions.map(x => x.id === s.id ? { ...x, status: "aprovada" } : x));
+                        saveNovidades([{ id: "n_" + Date.now(), date: new Date().toISOString().slice(0, 10), text: `Sugestão aprovada para ${h?.name}.` }, ...novidades]);
+                        logHist(h?.name, "sugestão", "pendente", "aprovada");
+                      }} className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1"><Check size={13} /> Aprovar</button>
+                      <button onClick={() => { saveSuggestions(suggestions.map(x => x.id === s.id ? { ...x, status: "recusada" } : x)); logHist(h?.name, "sugestão", "pendente", "recusada"); }}
+                        className="flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center gap-1"><X size={13} /> Recusar</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "avisos" && (
+          <div>
+            <button onClick={() => setAvisoForm({ id: "av_" + Date.now(), title: "", message: "", type: "informacao", startDate: "", endDate: "" })}
+              className="w-full py-2.5 rounded-xl bg-blue-700 text-white text-sm font-semibold mb-3 flex items-center justify-center gap-1.5"><Plus size={15} /> Novo aviso</button>
+            <div className="space-y-2">
+              {avisos.map(a => (
+                <div key={a.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{a.title}</p>
+                    <p className="text-xs text-slate-400 truncate">{a.message}</p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setAvisoForm(a)} className="p-2 rounded-full bg-slate-100 text-slate-600"><Pencil size={14} /></button>
+                    <button onClick={() => saveAvisos(avisos.filter(x => x.id !== a.id))} className="p-2 rounded-full bg-rose-50 text-rose-500"><Trash2 size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "historico" && (
+          <div className="space-y-2.5">
+            {historico.length === 0 && <EmptyState icon={Clock} title="Nenhuma alteração registrada ainda" />}
+            {historico.map(h => (
+              <div key={h.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+                <p className="text-xs text-slate-400">{new Date(h.date).toLocaleString("pt-BR")}</p>
+                <p className="font-semibold text-slate-800">{h.houseName} — {h.field}</p>
+                <p className="text-slate-500 text-xs">{h.oldValue} → <span className="font-semibold text-slate-700">{h.newValue}</span></p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {editHouse && (
+        <EditHouseModal
+          houseId={editHouse}
+          data={casasOverrides[editHouse] || {}}
+          onClose={() => setEditHouse(null)}
+          onSave={(data) => {
+            const h = HOUSES.find(x => x.id === editHouse);
+            logHist(h.name, "dados da casa", "—", "atualizado");
+            saveCasasOverrides({ ...casasOverrides, [editHouse]: data });
+            setEditHouse(null);
+          }}
+        />
+      )}
+
+      {editEntry && (
+        <EditEntryModal
+          entry={scheduleMerged.find(e => e.id === editEntry)}
+          onClose={() => setEditEntry(null)}
+          onSave={(data) => {
+            const base = SCHEDULE.find(e => e.id === editEntry);
+            const h = HOUSES.find(x => x.id === base.houseId);
+            logHist(h.name, "horário", base.time, data.time);
+            saveEnsaiosOverrides({ ...ensaiosOverrides, [editEntry]: data });
+            setEditEntry(null);
+          }}
+        />
+      )}
+
+      {avisoForm && (
+        <AvisoModal
+          data={avisoForm}
+          onClose={() => setAvisoForm(null)}
+          onSave={(data) => {
+            const exists = avisos.find(a => a.id === data.id);
+            saveAvisos(exists ? avisos.map(a => a.id === data.id ? data : a) : [data, ...avisos]);
+            setAvisoForm(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditHouseModal({ houseId, data, onClose, onSave }) {
+  const [form, setForm] = useState({ photo: data.photo || "", endereco: data.endereco || "", bairro: data.bairro || "", cidade: data.cidade || "São Paulo", cep: data.cep || "", lat: data.lat || "", lng: data.lng || "", confirmado: data.confirmado || false, ativo: data.ativo !== false });
+  const house = HOUSES.find(h => h.id === houseId);
+  return (
+    <Modal title={`Editar: ${house.name}`} onClose={onClose}>
+      <Field label="URL da foto (opcional)"><input value={form.photo} onChange={e => setForm({ ...form, photo: e.target.value })} className={inputCls} placeholder="https://..." /></Field>
+      <Field label="Endereço"><input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} className={inputCls} /></Field>
+      <Field label="Bairro"><input value={form.bairro} onChange={e => setForm({ ...form, bairro: e.target.value })} className={inputCls} /></Field>
+      <Field label="CEP"><input value={form.cep} onChange={e => setForm({ ...form, cep: e.target.value })} className={inputCls} /></Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Latitude"><input value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} className={inputCls} /></Field>
+        <Field label="Longitude"><input value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} className={inputCls} /></Field>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-3">
+        <input type="checkbox" checked={form.confirmado} onChange={e => setForm({ ...form, confirmado: e.target.checked })} className="w-4 h-4 accent-blue-700" /> Endereço confirmado
+      </label>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-4">
+        <input type="checkbox" checked={form.ativo} onChange={e => setForm({ ...form, ativo: e.target.checked })} className="w-4 h-4 accent-blue-700" /> Casa ativa
+      </label>
+      <button onClick={() => onSave(form)} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Salvar</button>
+    </Modal>
+  );
+}
+
+function EditEntryModal({ entry, onClose, onSave }) {
+  const [form, setForm] = useState({ time: entry.time, person: entry.person });
+  return (
+    <Modal title="Editar ensaio" onClose={onClose}>
+      <Field label="Horário"><input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} className={inputCls} /></Field>
+      <Field label="Encarregado"><input value={form.person} onChange={e => setForm({ ...form, person: e.target.value })} className={inputCls} /></Field>
+      <button onClick={() => onSave(form)} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Salvar</button>
+    </Modal>
+  );
+}
+
+function AvisoModal({ data, onClose, onSave }) {
+  const [form, setForm] = useState(data);
+  return (
+    <Modal title="Aviso" onClose={onClose}>
+      <Field label="Título"><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className={inputCls} /></Field>
+      <Field label="Mensagem"><textarea rows={2} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} className={inputCls} /></Field>
+      <Field label="Tipo">
+        <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className={inputCls}>
+          <option value="cancelamento">🔴 Cancelamento</option>
+          <option value="alteracao">🟡 Alteração</option>
+          <option value="informacao">🔵 Informação</option>
+          <option value="novidade">🟢 Novidade</option>
+        </select>
+      </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Início"><input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className={inputCls} /></Field>
+        <Field label="Fim"><input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} className={inputCls} /></Field>
+      </div>
+      <button onClick={() => onSave(form)} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold mt-1">Salvar aviso</button>
+    </Modal>
+  );
+}
+
+/* ============================== APP ROOT ============================== */
+
+function App() {
+  const [view, setView] = useState("home");
+  const [houseId, setHouseId] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const [favorites, saveFavorites, favReady] = useStored("favorites", [], false);
+  const [casasOverrides, saveCasasOverrides] = useStored("casas-overrides", {}, true);
+  const [ensaiosOverrides, saveEnsaiosOverrides] = useStored("ensaios-overrides", {}, true);
+  const [suggestions, saveSuggestions] = useStored("suggestions", [], true);
+  const [avisos, saveAvisos] = useStored("avisos", [], true);
+  const [novidades, saveNovidades] = useStored("novidades", SEED_NOVIDADES, true);
+  const [historico, saveHistorico] = useStored("historico", [], true);
+
+  const toggleFav = (hid) => {
+    saveFavorites(favorites.includes(hid) ? favorites.filter(x => x !== hid) : [...favorites, hid]);
+  };
+  const openHouse = (hid) => { setHouseId(hid); setView("casa-detail"); };
+  const addSuggestion = (s) => saveSuggestions([...suggestions, s]);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [view, houseId]);
+
+  let content;
+  if (!favReady) {
+    content = <div className="px-4 pt-16 text-center text-slate-400 text-sm">Carregando...</div>;
+  } else if (view === "home") content = <HomePage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} avisos={avisos} openHouse={openHouse} setView={setView} />;
+  else if (view === "calendario") content = <CalendarioPage ensaiosOverrides={ensaiosOverrides} favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} openHouse={openHouse} />;
+  else if (view === "casas") content = <CasasPage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} openHouse={openHouse} />;
+  else if (view === "casa-detail") content = <CasaDetailPage houseId={houseId} favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} back={() => setView("casas")} />;
+  else if (view === "favoritos") content = <FavoritosPage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} openHouse={openHouse} setView={setView} />;
+  else if (view === "agenda") content = <AgendaPage favorites={favorites} ensaiosOverrides={ensaiosOverrides} casasOverrides={casasOverrides} favToggle={toggleFav} openHouse={openHouse} />;
+  else if (view === "mapa") content = <MapaPage casasOverrides={casasOverrides} favorites={favorites} toggleFav={toggleFav} openHouse={openHouse} />;
+  else if (view === "novidades") content = <NovidadesPage novidades={novidades} />;
+  else if (view === "avisos") content = <AvisosPage avisos={avisos} />;
+  else if (view === "sugerir-alt") content = <SugerirAlteracaoPage addSuggestion={addSuggestion} setView={setView} />;
+  else if (view === "sugerir-ensaio") content = <SugerirEnsaioPage addSuggestion={addSuggestion} setView={setView} />;
+  else if (view === "config") content = <ConfiguracoesPage setView={setView} />;
+  else if (view === "admin") content = <AdminPage casasOverrides={casasOverrides} saveCasasOverrides={saveCasasOverrides} ensaiosOverrides={ensaiosOverrides} saveEnsaiosOverrides={saveEnsaiosOverrides}
+    suggestions={suggestions} saveSuggestions={saveSuggestions} avisos={avisos} saveAvisos={saveAvisos} novidades={novidades} saveNovidades={saveNovidades}
+    historico={historico} saveHistorico={saveHistorico} favorites={favorites} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans max-w-md mx-auto relative pb-16 shadow-xl">
+      {view !== "casa-detail" && <Header onMenu={() => setMoreOpen(true)} />}
+      <main>{content}</main>
+      <BottomNav view={view} setView={(v) => { setHouseId(null); setView(v); }} favCount={favorites.length} />
+      {moreOpen && <MoreSheet onClose={() => setMoreOpen(false)} setView={setView} />}
+    </div>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
