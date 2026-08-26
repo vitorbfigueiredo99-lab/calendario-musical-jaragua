@@ -23,7 +23,11 @@
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react,env">
+  <div id="fallback" style="display:none;position:fixed;inset:0;background:#f8fafc;padding:24px;font-family:sans-serif;color:#334155;">
+    <b>Não foi possível carregar o app.</b><br/>Verifique sua conexão e recarregue a página.
+  </div>
+
+  <script type="text/plain" id="app-source">
     const { useState, useEffect, useMemo, useRef } = React;
 
     /* ============================== ICONS (emoji, no external icon library needed) ============================== */
@@ -1390,8 +1394,25 @@ function App() {
   );
 }
 
-    const root = ReactDOM.createRoot(document.getElementById("root"));
+
+    const rootEl = document.getElementById("root");
+    const root = ReactDOM.createRoot(rootEl);
     root.render(<App />);
+  </script>
+
+  <script>
+    (function () {
+      try {
+        var src = document.getElementById("app-source").textContent;
+        var out = Babel.transform(src, { presets: ["react"] }).code;
+        var s = document.createElement("script");
+        s.textContent = out;
+        document.body.appendChild(s);
+      } catch (err) {
+        console.error("Falha ao iniciar o app:", err);
+        document.getElementById("fallback").style.display = "block";
+      }
+    })();
   </script>
 </body>
 </html>
