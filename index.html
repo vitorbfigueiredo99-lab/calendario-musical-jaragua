@@ -670,7 +670,7 @@ function BottomNav({ view, setView, favCount }) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 flex justify-around py-1.5 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
       {items.map((it) => {
-        const active = view === it.id || (it.id === "mais" && ["mapa","agenda","regionais","cultos","novidades","avisos","sugerir-alt","sugerir-ensaio","config","admin"].includes(view));
+        const active = view === it.id || (it.id === "mais" && ["mapa","agenda","regionais","cultos","novidades","avisos","sugerir-alt","sugerir-ensaio","enviar-documento","config","admin"].includes(view));
         return (
           <button key={it.id} onClick={() => setView(it.id)} className="flex flex-col items-center gap-0.5 px-3 py-1.5 relative">
             <it.icon size={21} className={active ? "text-blue-700" : "text-slate-400"} fill={it.id === "favoritos" && active ? "currentColor" : "none"} />
@@ -697,6 +697,7 @@ function MoreSheet({ onClose, setView, hasAvisos }) {
   const participar = [
     { id: "sugerir-alt", label: "Sugerir alteração", icon: Lightbulb },
     { id: "sugerir-ensaio", label: "Sugerir ensaio", icon: Plus },
+    { id: "enviar-documento", label: "Enviar documento", icon: Lightbulb },
     { id: "config", label: "Configurações", icon: Settings },
     { id: "admin", label: "Painel administrativo", icon: ShieldCheck },
   ];
@@ -755,7 +756,7 @@ function MoreSheet({ onClose, setView, hasAvisos }) {
 
 /* ============================== HOME PAGE ============================== */
 
-function HomePage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, avisos, openHouse, setView }) {
+function HomePage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, avisos, cultos, openHouse, setView }) {
   const [showWelcome, setShowWelcome] = useState(true);
   const [query, setQuery] = useState("");
   const today = useMemo(() => new Date(), []);
@@ -812,6 +813,11 @@ function HomePage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, avis
   }, [avisos, today]);
 
   const AVISO_ICON = { cancelamento: "🔴", alteracao: "🟡", informacao: "🔵", novidade: "🟢" };
+
+  const todayCultos = useMemo(() => {
+    const wd = WEEKDAYS[today.getDay()];
+    return cultos.filter((c) => c.diaSemana === wd).sort((a, b) => (a.horario || "").localeCompare(b.horario || ""));
+  }, [cultos, today]);
 
   const weekdayName = WD_LABEL[WEEKDAYS[today.getDay()]];
 
@@ -890,6 +896,27 @@ function HomePage({ favorites, toggleFav, casasOverrides, ensaiosOverrides, avis
           </div>
         )}
       </div>
+
+      {todayCultos.length > 0 && (
+        <div>
+          <SectionTitle icon={ShieldCheck} accent="bg-blue-700">🏠 Cultos de Hoje</SectionTitle>
+          <div className="space-y-2">
+            {todayCultos.map((c) => {
+              const tipoInfo = CULTO_TIPOS.find((t) => t.id === c.tipo);
+              return (
+                <div key={c.id} className="rounded-xl bg-white border border-slate-200 p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-800 truncate">{c.local}</p>
+                    <p className="text-xs text-slate-500">{tipoInfo?.icon} {tipoInfo?.label}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-sm font-bold text-blue-700 shrink-0"><Clock size={14} />{c.horario}</span>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={() => setView("cultos")} className="mt-2.5 text-sm text-blue-700 font-semibold w-full text-center">Ver todos os cultos e reuniões →</button>
+        </div>
+      )}
 
       <div>
         <SectionTitle icon={CalendarIcon}>📅 Próximos Ensaios</SectionTitle>
@@ -1394,6 +1421,11 @@ const DIA_SEMANA_LABEL = { domingo: "Domingo", segunda: "Segunda", terca: "Terç
 
 function CultosPage({ cultos }) {
   const [tab, setTab] = useState("oficial");
+  const today = useMemo(() => new Date(), []);
+  const todayItems = useMemo(() => {
+    const wd = WEEKDAYS[today.getDay()];
+    return cultos.filter((c) => c.diaSemana === wd).sort((a, b) => (a.horario || "").localeCompare(b.horario || ""));
+  }, [cultos, today]);
   const items = cultos.filter((c) => c.tipo === tab).sort((a, b) => {
     if (a.data && b.data) return a.data.localeCompare(b.data);
     if (a.data) return -1;
@@ -1404,6 +1436,26 @@ function CultosPage({ cultos }) {
   return (
     <div className="px-4 pt-4 pb-6">
       <SectionTitle icon={ShieldCheck}>Cultos e Reuniões</SectionTitle>
+
+      {todayItems.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-amber-600 mb-2">🔥 Hoje tem culto — {WD_LABEL[WEEKDAYS[today.getDay()]]}</p>
+          <div className="space-y-2">
+            {todayItems.map((c) => {
+              const tipoInfo = CULTO_TIPOS.find((t) => t.id === c.tipo);
+              return (
+                <div key={c.id} className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-800 truncate">{c.local}</p>
+                    <p className="text-xs text-slate-500">{tipoInfo?.icon} {tipoInfo?.label}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-sm font-bold text-blue-700 shrink-0"><Clock size={14} />{c.horario}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2 px-1">Serviços Oficiais</p>
       <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden mb-5">
@@ -1440,19 +1492,22 @@ function CultosPage({ cultos }) {
 function AvisosPage({ avisos }) {
   const AVISO_ICON = { cancelamento: "🔴", alteracao: "🟡", informacao: "🔵", novidade: "🟢" };
   const AVISO_LABEL = { cancelamento: "Cancelamento", alteracao: "Alteração de horário", informacao: "Informação", novidade: "Novo ensaio" };
+  const sorted = [...avisos].sort((a, b) => (b.fixado ? 1 : 0) - (a.fixado ? 1 : 0));
   return (
     <div className="px-4 pt-4 pb-6">
       <SectionTitle icon={Megaphone}>📢 Avisos Importantes</SectionTitle>
       <div className="space-y-2.5">
         {avisos.length === 0 && <EmptyState icon={Megaphone} title="Nenhum aviso no momento" />}
-        {avisos.map(a => (
-          <div key={a.id} className="rounded-xl border border-slate-200 p-3.5">
+        {sorted.map(a => (
+          <div key={a.id} className={`rounded-xl border p-3.5 ${a.fixado ? "border-amber-300 bg-amber-50" : "border-slate-200"}`}>
             <div className="flex items-center gap-2 mb-1">
+              {a.fixado && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">📌 Fixado</span>}
               <span>{AVISO_ICON[a.type]}</span>
               <span className="text-xs font-bold uppercase tracking-wide text-slate-400">{AVISO_LABEL[a.type]}</span>
             </div>
             <p className="font-semibold text-slate-800 text-sm">{a.title}</p>
             <p className="text-sm text-slate-500 mt-0.5">{a.message}</p>
+            {a.imagem && <img src={a.imagem} alt={a.title} className="rounded-lg mt-2 w-full object-contain border border-slate-200 bg-white" />}
           </div>
         ))}
       </div>
@@ -1547,6 +1602,85 @@ function SugerirEnsaioPage({ addSuggestion, setView }) {
       <Field label="Encarregado"><input value={encarregado} onChange={e => setEncarregado(e.target.value)} className={inputCls} /></Field>
       <Field label="Observação (opcional)"><textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} className={inputCls} /></Field>
       <button onClick={submit} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold">Enviar sugestão</button>
+    </div>
+  );
+}
+
+function resizeImageToDataURL(file, maxWidth) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width, height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function EnviarDocumentoPage({ addSuggestion, setView }) {
+  const [titulo, setTitulo] = useState("");
+  const [obs, setObs] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [erro, setErro] = useState("");
+  const [sent, setSent] = useState(false);
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setErro("");
+    try {
+      const dataUrl = await resizeImageToDataURL(file, 1000);
+      setPreview(dataUrl);
+    } catch (err) {
+      console.error(err);
+      setErro("Não foi possível ler essa imagem. Tente outra.");
+    }
+  };
+
+  const submit = () => {
+    if (!titulo.trim() || !preview) return;
+    addSuggestion({ id: "sg_" + Date.now(), type: "documento", titulo, imagem: preview, obs, status: "pendente", createdAt: new Date().toISOString() });
+    setSent(true);
+  };
+
+  if (sent) return (
+    <div className="px-4 pt-10 text-center">
+      <Check size={40} className="mx-auto text-emerald-600 mb-3" />
+      <p className="font-serif text-lg font-semibold text-slate-800">Documento enviado!</p>
+      <p className="text-sm text-slate-500 mt-1">Ele será analisado pelo administrador. Se aprovado, aparece fixado nos Avisos.</p>
+      <button onClick={() => setView("home")} className="mt-5 px-5 py-2.5 bg-blue-700 text-white rounded-xl text-sm font-semibold">Voltar ao início</button>
+    </div>
+  );
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <SectionTitle icon={Lightbulb}>📎 Enviar documento</SectionTitle>
+      <p className="text-sm text-slate-500 mb-4">Envie a foto de um documento (ex: lista de batismo, comunicado) para o administrador avaliar. Se aprovado, ele aparece fixado nos Avisos para todos.</p>
+      <Field label="Título">
+        <input value={titulo} onChange={(e) => setTitulo(e.target.value)} className={inputCls} placeholder="Ex: Lista de Batismo" />
+      </Field>
+      <Field label="Foto do documento">
+        <input type="file" accept="image/*" capture="environment" onChange={handleFile} className={inputCls} />
+      </Field>
+      {erro && <p className="text-sm text-rose-500 mb-2">{erro}</p>}
+      {preview && <img src={preview} alt="Pré-visualização" className="rounded-xl mb-3 max-h-64 w-full object-contain border border-slate-200 bg-slate-50" />}
+      <Field label="Observação (opcional)"><textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} className={inputCls} /></Field>
+      <button onClick={submit} disabled={!titulo.trim() || !preview} className="w-full py-3 rounded-xl bg-blue-700 text-white font-semibold disabled:opacity-40">Enviar para aprovação</button>
     </div>
   );
 }
@@ -1726,14 +1860,19 @@ function AdminPage({ casasOverrides, saveCasasOverrides, ensaiosOverrides, saveE
             {suggestions.length === 0 && <EmptyState icon={Lightbulb} title="Nenhuma sugestão recebida" />}
             {suggestions.slice().reverse().map(s => {
               const h = HOUSES.find(hh => hh.id === s.casaId);
+              const label = s.type === "documento" ? s.titulo : h?.name;
               return (
                 <div key={s.id} className="rounded-xl border border-slate-200 p-3.5">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-bold text-slate-800">{h?.name}</p>
+                    <p className="text-sm font-bold text-slate-800">{label}</p>
                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${s.status === "pendente" ? "bg-amber-100 text-amber-700" : s.status === "aprovada" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{s.status}</span>
                   </div>
                   {s.type === "alteracao" ? (
                     <p className="text-sm text-slate-600">Alteração ({s.tipo}): {s.info}</p>
+                  ) : s.type === "documento" ? (
+                    <>
+                      {s.imagem && <img src={s.imagem} alt="Documento enviado" className="rounded-lg my-2 max-h-56 w-full object-contain border border-slate-200 bg-slate-50" />}
+                    </>
                   ) : (
                     <p className="text-sm text-slate-600">Novo ensaio: {s.data} às {s.horario} — {s.encarregado}</p>
                   )}
@@ -1742,10 +1881,16 @@ function AdminPage({ casasOverrides, saveCasasOverrides, ensaiosOverrides, saveE
                     <div className="flex gap-2 mt-2.5">
                       <button onClick={() => {
                         saveSuggestions(suggestions.map(x => x.id === s.id ? { ...x, status: "aprovada" } : x));
-                        saveNovidades([{ id: "n_" + Date.now(), date: new Date().toISOString().slice(0, 10), text: `Sugestão aprovada para ${h?.name}.` }, ...novidades]);
-                        logHist(h?.name, "sugestão", "pendente", "aprovada");
+                        if (s.type === "documento") {
+                          saveAvisos([{ id: "av_" + Date.now(), title: s.titulo, message: s.obs || "Documento enviado pela comunidade.", type: "informacao", startDate: "", endDate: "", imagem: s.imagem, fixado: true }, ...avisos]);
+                          saveNovidades([{ id: "n_" + Date.now(), date: new Date().toISOString().slice(0, 10), text: `Novo documento fixado nos avisos: ${s.titulo}.` }, ...novidades]);
+                          logHist(s.titulo, "documento", "pendente", "aprovado e fixado");
+                        } else {
+                          saveNovidades([{ id: "n_" + Date.now(), date: new Date().toISOString().slice(0, 10), text: `Sugestão aprovada para ${h?.name}.` }, ...novidades]);
+                          logHist(h?.name, "sugestão", "pendente", "aprovada");
+                        }
                       }} className="flex-1 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center justify-center gap-1"><Check size={13} /> Aprovar</button>
-                      <button onClick={() => { saveSuggestions(suggestions.map(x => x.id === s.id ? { ...x, status: "recusada" } : x)); logHist(h?.name, "sugestão", "pendente", "recusada"); }}
+                      <button onClick={() => { saveSuggestions(suggestions.map(x => x.id === s.id ? { ...x, status: "recusada" } : x)); logHist(label, "sugestão", "pendente", "recusada"); }}
                         className="flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center gap-1"><X size={13} /> Recusar</button>
                     </div>
                   )}
@@ -2034,37 +2179,18 @@ function CultoModal({ data, onClose, onSave }) {
 function SplashScreen({ onEnter }) {
   return (
     <div
-      className="fixed inset-0 z-50 min-h-screen flex flex-col items-center justify-between py-14 px-6 text-center"
+      className="fixed inset-0 z-50 min-h-screen flex flex-col items-center justify-between py-6 px-5 text-center overflow-y-auto no-scrollbar"
       style={{ background: "radial-gradient(circle at 50% 15%, #eef4fb 0%, #f8fafc 55%, #eef1f6 100%)" }}
     >
-      <div />
-
-      <div className="flex flex-col items-center">
-        <div className="flex gap-1 justify-center mb-1.5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <span key={i} className="w-1 h-3 bg-slate-800 rounded-sm" />
-          ))}
-        </div>
-        <div
-          className="border-2 border-slate-800 px-8 py-6 mb-8 bg-white/40"
-          style={{ borderRadius: "4px 4px 28px 28px / 4px 4px 18px 18px" }}
-        >
-          <div className="text-3xl mb-1.5">🎵</div>
-          <p className="text-[11px] font-bold tracking-[0.2em] text-slate-800 leading-tight">
-            SETOR<br />JARAGUÁ
-          </p>
-        </div>
-
-        <h1 className="font-serif text-3xl tracking-[0.35em] text-slate-400 font-light">CALENDÁRIO</h1>
-        <h1 className="font-serif text-4xl tracking-[0.15em] text-blue-950 font-bold -mt-1 mb-4">MUSICAL</h1>
-
-        <div className="w-16 h-4 mb-4" style={{ borderTop: "1px solid #cbd5e1", borderRadius: "50%" }} />
-
-        <p className="text-xs font-bold tracking-[0.25em] text-slate-600">CASAS DE ORAÇÃO</p>
-        <p className="text-[11px] tracking-[0.2em] text-slate-400 mt-1">SETOR JARAGUÁ</p>
+      <div className="flex-1 flex items-center justify-center w-full py-4">
+        <img
+          src="/cover.jpg"
+          alt="Calendário Musical — Setor Jaraguá"
+          className="w-full max-w-md rounded-2xl shadow-xl border border-white/50"
+        />
       </div>
 
-      <div className="flex flex-col items-center gap-4 w-full">
+      <div className="flex flex-col items-center gap-4 w-full pb-2">
         <button
           onClick={onEnter}
           className="bg-blue-950 hover:bg-blue-900 active:bg-blue-900 text-white text-xs font-bold tracking-[0.2em] px-8 py-3.5 rounded-full flex items-center gap-2 shadow-lg shadow-blue-950/20"
@@ -2132,7 +2258,7 @@ function App() {
         ))}
       </div>
     );
-  } else if (view === "home") content = <HomePage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} avisos={avisos} openHouse={openHouse} setView={setView} />;
+  } else if (view === "home") content = <HomePage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} avisos={avisos} cultos={cultos} openHouse={openHouse} setView={setView} />;
   else if (view === "calendario") content = <CalendarioPage ensaiosOverrides={ensaiosOverrides} favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} openHouse={openHouse} />;
   else if (view === "casas") content = <CasasPage favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} openHouse={openHouse} />;
   else if (view === "casa-detail") content = <CasaDetailPage houseId={houseId} favorites={favorites} toggleFav={toggleFav} casasOverrides={casasOverrides} ensaiosOverrides={ensaiosOverrides} back={() => setView("casas")} />;
@@ -2145,6 +2271,7 @@ function App() {
   else if (view === "cultos") content = <CultosPage cultos={cultos} />;
   else if (view === "sugerir-alt") content = <SugerirAlteracaoPage addSuggestion={addSuggestion} setView={setView} />;
   else if (view === "sugerir-ensaio") content = <SugerirEnsaioPage addSuggestion={addSuggestion} setView={setView} />;
+  else if (view === "enviar-documento") content = <EnviarDocumentoPage addSuggestion={addSuggestion} setView={setView} />;
   else if (view === "config") content = <ConfiguracoesPage setView={setView} darkMode={darkMode} toggleDark={() => setDarkMode((d) => !d)} />;
   else if (view === "admin") content = <AdminPage casasOverrides={casasOverrides} saveCasasOverrides={saveCasasOverrides} ensaiosOverrides={ensaiosOverrides} saveEnsaiosOverrides={saveEnsaiosOverrides}
     suggestions={suggestions} saveSuggestions={saveSuggestions} avisos={avisos} saveAvisos={saveAvisos} novidades={novidades} saveNovidades={saveNovidades}
